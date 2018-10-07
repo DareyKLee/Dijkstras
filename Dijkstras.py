@@ -4,8 +4,7 @@ import unittest
 # set to true if you keep track of the previous nodes for solutions
 # B-level is a working Dijkstra's
 # A-level is a working Dijkstra's that tracks previous nodes
-track_previous = False
-
+track_previous = True
 
 class weighted_digraph:
     class __edge(object):
@@ -59,9 +58,9 @@ class weighted_digraph:
     def find(self, value):
         for node in self:
             if node.value == value:
-                return (node)
+                return node
 
-        return (None)
+        return
 
     def add_nodes(self, nodes):
         for node in nodes:
@@ -131,12 +130,94 @@ class weighted_digraph:
         # todo list
 
         # return the result list
-        pass
 
+        if not self:
+            raise RuntimeError("no graph")
+
+        self.set_infinite_and_none()
+
+        source = self.find(start)
+
+        if source is None:
+            raise RuntimeError("Source not found")
+
+        source.distance = 0
+
+        todo = set([source])
+        result = []
+
+
+        while todo:
+            smallest_node_in_todo = None
+
+            for node in todo:
+                if smallest_node_in_todo is None or smallest_node_in_todo.distance > node.distance:
+                    smallest_node_in_todo = node
+
+            todo.remove(smallest_node_in_todo)
+
+            if track_previous is False:
+                result.append([smallest_node_in_todo.distance, smallest_node_in_todo.value])
+
+            else:
+                if smallest_node_in_todo.previous:
+                    result.append([smallest_node_in_todo.distance, smallest_node_in_todo.value])
+
+                    for node_value in self.find_previous_nodes(smallest_node_in_todo):
+                        result[-1].append(node_value)
+
+                else:
+                    result.append([smallest_node_in_todo.distance, smallest_node_in_todo.value])
+
+            for edge in smallest_node_in_todo.edges:
+                if edge.to_node.distance == float("inf") or \
+                   edge.to_node.distance > smallest_node_in_todo.distance + edge.weight:
+
+                    edge.to_node.distance = smallest_node_in_todo.distance + edge.weight
+                    edge.to_node.previous = smallest_node_in_todo
+
+                    todo.add(edge.to_node)
+
+        return result
+
+    def set_infinite_and_none(self):
+        for node in self:
+            node.distance = float("inf")
+            node.previous = None
+
+    def find_previous_nodes(self, node):
+        previous_nodes_value = []
+
+        while node:
+            if node.previous:
+                previous_nodes_value.append(node.previous.value)
+
+            node = node.previous
+
+        return previous_nodes_value
 
 class test_weighted_digraph(unittest.TestCase):
     def test_empty(self):
         self.assertEqual(len(weighted_digraph()), 0)
+
+    def test_empty_graph(self):
+        g = weighted_digraph(False)
+        self.assertRaises(RuntimeError, lambda: g.dijkstra("Denver"))
+
+    def test_unfound_start(self):
+        g = weighted_digraph(False)
+        g.add_node("Denver")
+        self.assertRaises(RuntimeError, lambda: g.dijkstra("Not Denver"))
+
+    def test_set_infinite_and_none(self):
+        g = weighted_digraph(False)
+        g.add_edges([(1, 2, 2), (1, 3, 1), (2, 3, 1), (2, 4, 1), \
+                     (2, 5, 2), (3, 5, 5), (4, 5, 3), (4, 6, 6), (5, 6, 1)])
+        g.set_infinite_and_none()
+
+        for node in g:
+            self.assertEqual(node.distance, float("inf"))
+            self.assertEqual(node.previous, None)
 
     def test_one(self):
         g = weighted_digraph()
@@ -217,6 +298,7 @@ class test_weighted_digraph(unittest.TestCase):
            \|      \|/
             3---5---5
         '''
+
         g = weighted_digraph(False)
         g.add_edges([(1, 2, 2), (1, 3, 1), (2, 3, 1), (2, 4, 1), \
                      (2, 5, 2), (3, 5, 5), (4, 5, 3), (4, 6, 6), (5, 6, 1)])
@@ -226,7 +308,6 @@ class test_weighted_digraph(unittest.TestCase):
         else:
             self.assertEqual(g.dijkstra(1), [[0, 1], [1, 3, 1], [2, 2, 1], \
                                              [3, 4, 2, 1], [4, 5, 2, 1], [5, 6, 5, 2, 1]])
-
 
 if '__main__' == __name__:
     g = weighted_digraph(False)
